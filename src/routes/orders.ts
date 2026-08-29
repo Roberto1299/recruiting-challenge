@@ -39,6 +39,41 @@ ordersRouter.get('/export', (req, res) => {
   res.end();
 });
 
+// Must come before GET /:id — same reason as /export.
+ordersRouter.get('/search', (req, res) => {
+  const merchantId = req.merchantId!;
+  const q = req.query;
+
+  const email = typeof q.email === 'string' ? q.email : undefined;
+  const status = typeof q.status === 'string' ? q.status : undefined;
+  const type = q.type === 'sale' || q.type === 'refund' ? q.type : undefined;
+
+  const fromRaw = typeof q.from === 'string' ? q.from : undefined;
+  const toRaw = typeof q.to === 'string' ? q.to : undefined;
+  let from: string | undefined;
+  let to: string | undefined;
+  if (fromRaw && toRaw) {
+    try {
+      ({ fromUtc: from, toUtc: to } = mexicoDayRangeToUtcBounds(fromRaw, toRaw));
+    } catch {
+      res.status(400).json({ error: 'invalid_date_range', detail: 'from and to must be YYYY-MM-DD' });
+      return;
+    }
+  }
+
+  const limitRaw = typeof q.limit === 'string' ? Number(q.limit) : 20;
+  const offset = typeof q.offset === 'string' ? Number(q.offset) : 0;
+  if (!Number.isInteger(limitRaw) || !Number.isInteger(offset) || limitRaw < 1 || offset < 0) {
+    res.status(400).json({ error: 'invalid_pagination', detail: 'limit must be >=1, offset must be >=0' });
+    return;
+  }
+  const limit = Math.min(limitRaw, 100);
+
+  const { orders, total } = ordersDal.search(merchantId, { email, status, type, from, to }, { limit, offset });
+
+  res.json({ orders, total, limit, offset });
+});
+
 ordersRouter.get('/:id', (req, res) => {
   const order = ordersDal.getById(req.params.id, req.merchantId);
   if (!order) {

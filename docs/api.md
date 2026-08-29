@@ -20,6 +20,31 @@ created_at`. `created_at` is `YYYY-MM-DD`, shifted to the business timezone
 `ordersDal.iterateAllByMerchant`. `total_amount` is raw cents, as stored.
 `Content-Type: text/csv`, downloads as `orders_{merchant_id}.csv`.
 
+## `GET /api/orders/search`
+Filtered, paginated order search for the authenticated merchant. All filters
+are optional and combine with AND (not OR).
+
+Query params:
+- `email` — substring match against `customer_email` (case-sensitive, SQLite
+  default collation). `%`/`_` in the value are treated as literal characters,
+  not SQL wildcards.
+- `type` — exact match, `sale` or `refund`. Any other value is ignored.
+- `status` — exact match, free text (the schema has no status enum).
+- `from` + `to` — `YYYY-MM-DD` calendar days in the business timezone (see
+  "Date ranges" below); only applied if both are present.
+- `limit` — default `20`, max `100`. Values above 100 are clamped, not
+  rejected.
+- `offset` — default `0`.
+
+Response: `{ orders, total, limit, offset }`. `total` is the full match count
+regardless of pagination, so the caller can render real page controls.
+
+**Known limitations:** pagination is offset-based, not cursor-based — a page
+can shift if orders are inserted while paging through results. `email` has
+no dedicated index (leading-wildcard `LIKE` can't use one), so it's a full
+scan per merchant; fine at this dataset's size, worth revisiting if a
+merchant's order volume grows substantially.
+
 ## `GET /api/orders/:id`
 Get a single order by ID, scoped to the authenticated merchant.
 Returns `404` both if the order doesn't exist and if it belongs to a

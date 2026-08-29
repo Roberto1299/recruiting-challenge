@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import { escapeLikePattern } from '../lib/like.js';
 
 export interface OrderRow {
   id: string;
@@ -155,5 +156,57 @@ export const ordersDal = {
       status: string;
       created_date: string;
     }>;
+  },
+
+  /**
+   * Filtered, paginated order search. Builds the WHERE clause dynamically
+   * from whichever filters were passed — every value stays a bound
+   * parameter, nothing is string-concatenated into the SQL, regardless of
+   * how many filters are active.
+   *
+   * total comes from a second COUNT(*) query with the identical WHERE —
+   * needed so the caller can render real pagination (page 2 of N), not
+   * just "here are up to `limit` rows with no idea how many exist".
+   */
+  search(
+    merchantId: string,
+    filters: {
+      email?: string;
+      status?: string;
+      type?: 'sale' | 'refund';
+      from?: string;
+      to?: string;
+    },
+    page: { limit: number; offset: number },
+  ): { orders: OrderRow[]; total: number } {
+    const clauses = ['merchant_id = ?'];
+    const params: Array<string | number> = [merchantId];
+
+    if (filters.email) {
+      clauses.push(`customer_email LIKE ? ESCAPE '\\'`);
+      params.push(`%${escapeLikePattern(filters.email)}%`);
+    }
+    if (filters.status) {
+      clauses.push('status = ?');
+      params.push(filters.status);
+    }
+    if (filters.type) {
+      clauses.push('type = ?');
+      params.push(filters.type);
+    }
+    if (filters.from && filters.to) {
+      clauses.push('created_at >= ? AND created_at < ?');
+      params.push(filters.from, filters.to);
+    }
+
+    const where = clauses.join(' AND ');
+
+    const totalRow = db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE ${where}`).get(...params) as { n: number };
+
+    const orders = db
+      .prepare(`SELECT * FROM orders WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, page.limit, page.offset) as OrderRow[];
+
+    return { orders, total: totalRow.n };
   },
 };

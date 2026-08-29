@@ -9,6 +9,9 @@
       body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
       h1 { margin-bottom: 0.25rem; }
       .merchant-picker { margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem; }
+      .search-form { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem; }
+      .search-form input, .search-form select { padding: 0.35rem; }
+      .pagination { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
       .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
       .card { border: 1px solid #ccc4; border-radius: 8px; padding: 1rem; }
       .card .label { font-size: 0.85rem; opacity: 0.7; }
@@ -44,13 +47,31 @@
     </section>
 
     <section>
-      <h2>Recent orders</h2>
+      <h2>Orders</h2>
+      <form id="search-form" class="search-form">
+        <input type="text" id="search-email" placeholder="Customer email contains…" />
+        <select id="search-type">
+          <option value="">Any type</option>
+          <option value="sale">Sale</option>
+          <option value="refund">Refund</option>
+        </select>
+        <input type="text" id="search-status" placeholder="Status" />
+        <input type="date" id="search-from" />
+        <input type="date" id="search-to" />
+        <button type="submit">Search</button>
+      </form>
+      <p class="muted" id="search-summary"></p>
       <table>
         <thead>
-          <tr><th>Date</th><th>Customer</th><th>Type</th><th>Amount</th></tr>
+          <tr><th>Date</th><th>Customer</th><th>Type</th><th>Status</th><th>Amount</th></tr>
         </thead>
-        <tbody id="orders-tbody"></tbody>
+        <tbody id="search-tbody"></tbody>
       </table>
+      <div class="pagination">
+        <button type="button" id="search-prev" disabled>Prev</button>
+        <span id="search-page-label"></span>
+        <button type="button" id="search-next" disabled>Next</button>
+      </div>
     </section>
 
     <script src="/app.js"></script>
