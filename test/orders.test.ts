@@ -34,6 +34,37 @@ test('orders DAL: getById returns the order', () => {
     type: 'sale',
     status: 'completed',
   });
-  const got = ordersDal.getById('o2');
+  const got = ordersDal.getById('o2', 'm_test');
   assert.equal(got?.total_amount, 1200);
+});
+
+test('orders DAL: getById does not leak orders across merchants', () => {
+  initSchema();
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_test', 'Test')`).run();
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_other', 'Other')`).run();
+  ordersDal.create({
+    id: 'o3',
+    merchant_id: 'm_test',
+    customer_email: 'e@f.com',
+    total_amount: 999,
+    type: 'sale',
+    status: 'completed',
+  });
+  const got = ordersDal.getById('o3', 'm_other');
+  assert.equal(got, undefined);
+});
+
+test('orders DAL: getById fails closed when merchantId is missing', () => {
+  initSchema();
+  db.prepare(`INSERT OR IGNORE INTO merchants (id, name) VALUES ('m_test', 'Test')`).run();
+  ordersDal.create({
+    id: 'o4',
+    merchant_id: 'm_test',
+    customer_email: 'g@h.com',
+    total_amount: 555,
+    type: 'sale',
+    status: 'completed',
+  });
+  assert.equal(ordersDal.getById('o4', undefined), undefined);
+  assert.equal(ordersDal.getById('o4', ''), undefined);
 });
