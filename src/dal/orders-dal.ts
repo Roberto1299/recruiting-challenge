@@ -71,4 +71,50 @@ export const ordersDal = {
       .get(merchantId, from, to) as { total: number };
     return row.total;
   },
+
+  /**
+   * Summary stats for a merchant's orders. Used by the metrics endpoint.
+   */
+  summaryByMerchant(merchantId: string): {
+    total_orders: number;
+    unique_customers: number;
+    avg_order_value_cents: number;
+  } {
+    const totalOrdersRow = db
+      .prepare(`SELECT COUNT(*) AS n FROM orders WHERE merchant_id = ?`)
+      .get(merchantId) as { n: number };
+
+    const totalCustomersRow = db
+      .prepare(`SELECT COUNT(DISTINCT customer_email) AS n FROM orders WHERE merchant_id = ?`)
+      .get(merchantId) as { n: number };
+
+    const avgOrderRow = db
+      .prepare(`SELECT COALESCE(AVG(total_amount), 0) AS avg FROM orders WHERE merchant_id = ?`)
+      .get(merchantId) as { avg: number };
+
+    return {
+      total_orders: totalOrdersRow.n,
+      unique_customers: totalCustomersRow.n,
+      avg_order_value_cents: Math.round(avgOrderRow.avg),
+    };
+  },
+
+  /**
+   * Top customers by total spend for a merchant. Used by the metrics endpoint.
+   */
+  topCustomers(
+    merchantId: string,
+    limit: number,
+  ): Array<{ customer_email: string; order_count: number; total_spent: number }> {
+    return db
+      .prepare(
+        `SELECT customer_email, COUNT(*) AS order_count, SUM(total_amount) AS total_spent
+         FROM orders
+         WHERE merchant_id = ?
+         GROUP BY customer_email
+         ORDER BY total_spent DESC
+         LIMIT ?`,
+      )
+      .all(merchantId, limit) as Array<{ customer_email: string; order_count: number; total_spent: number }>;
+  },
 };

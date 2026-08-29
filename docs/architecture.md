@@ -11,7 +11,7 @@
   Eventually this becomes a real signed token; the header shape is a placeholder.
 - **`dal/`** — data-access layer. The intent is that all order queries route
   through `ordersDal` so we have one place to add auditing, caching, tenancy
-  filters, etc. (Not all routes follow this yet — see `metrics.ts`.)
+  filters, etc. All routes now go through it, including `metrics.ts`.
 - **`routes/`** — Express routers, one file per resource.
 - **`lib/`** — utilities. Currently `dates.ts`: converts `from`/`to` calendar
   days into UTC bounds for `created_at` comparisons, anchored to a fixed
