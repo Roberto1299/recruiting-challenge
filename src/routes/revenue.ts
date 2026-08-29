@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
+import { mexicoDayRangeToUtcBounds } from '../lib/dates.js';
 
 export const revenueRouter = Router();
 
@@ -16,7 +17,15 @@ revenueRouter.get('/', (req, res) => {
     return;
   }
 
-  const total = ordersDal.sumAmountByMerchant(req.merchantId!, from, to);
+  let fromUtc: string, toUtc: string;
+  try {
+    ({ fromUtc, toUtc } = mexicoDayRangeToUtcBounds(from, to));
+  } catch {
+    res.status(400).json({ error: 'invalid_date_range', detail: 'from and to must be YYYY-MM-DD' });
+    return;
+  }
+
+  const total = ordersDal.sumAmountByMerchant(req.merchantId!, fromUtc, toUtc);
   res.json({
     merchant_id: req.merchantId,
     from,

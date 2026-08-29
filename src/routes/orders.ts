@@ -1,13 +1,26 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
+import { mexicoDayRangeToUtcBounds } from '../lib/dates.js';
 import { randomUUID } from 'node:crypto';
 
 export const ordersRouter = Router();
 
 ordersRouter.get('/', (req, res) => {
+  const fromRaw = typeof req.query.from === 'string' ? req.query.from : undefined;
+  const toRaw = typeof req.query.to === 'string' ? req.query.to : undefined;
+  let from: string | undefined;
+  let to: string | undefined;
+  if (fromRaw && toRaw) {
+    try {
+      ({ fromUtc: from, toUtc: to } = mexicoDayRangeToUtcBounds(fromRaw, toRaw));
+    } catch {
+      res.status(400).json({ error: 'invalid_date_range', detail: 'from and to must be YYYY-MM-DD' });
+      return;
+    }
+  }
   const orders = ordersDal.listByMerchant(req.merchantId!, {
-    from: typeof req.query.from === 'string' ? req.query.from : undefined,
-    to: typeof req.query.to === 'string' ? req.query.to : undefined,
+    from,
+    to,
     limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
   });
   res.json({ orders });

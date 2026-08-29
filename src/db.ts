@@ -27,7 +27,12 @@ export function initSchema(): void {
       total_amount INTEGER NOT NULL,
       type TEXT NOT NULL DEFAULT 'sale',
       status TEXT NOT NULL DEFAULT 'completed',
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      -- ISO 8601 with 'T'/'Z' and milliseconds, matching JS toISOString().
+      -- NOTE: CREATE TABLE IF NOT EXISTS won't retrofit this default onto an
+      -- already-existing orders table (or reformat rows already stored under
+      -- the old CURRENT_TIMESTAMP format) — a real deployment needs a table
+      -- rebuild + backfill migration, not just this code change.
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
     );
 
     CREATE INDEX IF NOT EXISTS idx_orders_merchant ON orders(merchant_id);
