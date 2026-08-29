@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ordersDal } from '../dal/orders-dal.js';
 import { mexicoDayRangeToUtcBounds } from '../lib/dates.js';
+import { toCsvRow } from '../lib/csv.js';
 import { randomUUID } from 'node:crypto';
 
 export const ordersRouter = Router();
@@ -24,6 +25,18 @@ ordersRouter.get('/', (req, res) => {
     limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
   });
   res.json({ orders });
+});
+
+// Must come before GET /:id — otherwise Express would match "export" as an id param.
+ordersRouter.get('/export', (req, res) => {
+  const merchantId = req.merchantId!;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="orders_${merchantId}.csv"`);
+  res.write(toCsvRow(['id', 'customer_email', 'total_amount', 'type', 'status', 'created_at']));
+  for (const order of ordersDal.iterateAllByMerchant(merchantId)) {
+    res.write(toCsvRow([order.id, order.customer_email, order.total_amount, order.type, order.status, order.created_date]));
+  }
+  res.end();
 });
 
 ordersRouter.get('/:id', (req, res) => {

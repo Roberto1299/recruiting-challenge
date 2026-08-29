@@ -117,4 +117,43 @@ export const ordersDal = {
       )
       .all(merchantId, limit) as Array<{ customer_email: string; order_count: number; total_spent: number }>;
   },
+
+  /**
+   * Iterates every order for a merchant, for the CSV export report — no
+   * date filter, no row cap (unlike listByMerchant, which is capped for
+   * the dashboard's "recent orders" table). Streams via better-sqlite3's
+   * .iterate() instead of .all() so a large order history isn't buffered
+   * into memory at once.
+   *
+   * created_date shifts created_at by -6 hours before taking the date part
+   * — same fixed America/Mexico_City offset as BUSINESS_UTC_OFFSET in
+   * lib/dates.ts (Mexico has had no DST since a 2022 decree). Kept as a
+   * literal SQL offset here instead of importing dates.ts — if that offset
+   * ever changes, this query needs updating too.
+   */
+  iterateAllByMerchant(merchantId: string): IterableIterator<{
+    id: string;
+    customer_email: string;
+    total_amount: number;
+    type: 'sale' | 'refund';
+    status: string;
+    created_date: string;
+  }> {
+    return db
+      .prepare(
+        `SELECT id, customer_email, total_amount, type, status,
+                strftime('%Y-%m-%d', created_at, '-6 hours') AS created_date
+         FROM orders
+         WHERE merchant_id = ?
+         ORDER BY created_at DESC`,
+      )
+      .iterate(merchantId) as IterableIterator<{
+      id: string;
+      customer_email: string;
+      total_amount: number;
+      type: 'sale' | 'refund';
+      status: string;
+      created_date: string;
+    }>;
+  },
 };

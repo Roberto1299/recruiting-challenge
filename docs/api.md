@@ -12,6 +12,14 @@ List orders for the authenticated merchant. Optional query: `from`, `to`, `limit
 `from`/`to` are `YYYY-MM-DD` calendar days in the business timezone (see
 "Date ranges" below) — must be passed together, or both are ignored.
 
+## `GET /api/orders/export`
+CSV export of every order for the authenticated merchant — no date filter,
+no row cap. Columns: `id, customer_email, total_amount, type, status,
+created_at`. `created_at` is `YYYY-MM-DD`, shifted to the business timezone
+(America/Mexico_City, fixed -6h) at the SQL level — see
+`ordersDal.iterateAllByMerchant`. `total_amount` is raw cents, as stored.
+`Content-Type: text/csv`, downloads as `orders_{merchant_id}.csv`.
+
 ## `GET /api/orders/:id`
 Get a single order by ID, scoped to the authenticated merchant.
 Returns `404` both if the order doesn't exist and if it belongs to a

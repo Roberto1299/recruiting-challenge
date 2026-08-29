@@ -1,4 +1,5 @@
 const select = document.getElementById('merchant-select');
+const exportBtn = document.getElementById('export-csv-btn');
 const totalOrdersEl = document.getElementById('total-orders');
 const uniqueCustomersEl = document.getElementById('unique-customers');
 const avgOrderEl = document.getElementById('avg-order');
@@ -42,5 +43,28 @@ async function refresh() {
   }
 }
 
+async function downloadCsv() {
+  exportBtn.disabled = true;
+  try {
+    const res = await fetch('/api/orders/export', { headers: { 'X-Merchant-Id': select.value } });
+    if (!res.ok) throw new Error(`export failed: ${res.status}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `orders_${select.value}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error(err);
+    alert('Could not download CSV export.');
+  } finally {
+    exportBtn.disabled = false;
+  }
+}
+
 select.addEventListener('change', refresh);
+exportBtn.addEventListener('click', downloadCsv);
 refresh();
